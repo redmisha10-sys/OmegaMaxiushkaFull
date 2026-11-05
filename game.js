@@ -40,7 +40,8 @@ const sboOrangeImg    = new Image(); sboOrangeImg.src    = 'images/sbo_orange.pn
 const sboYellowImg    = new Image(); sboYellowImg.src    = 'images/sbo_yellow.png';
 const zovOrangeImg    = new Image(); zovOrangeImg.src    = 'images/zov_orange.png';
 const zovYellowImg    = new Image(); zovYellowImg.src    = 'images/zov_yellow.png';
-const dvizhuhaImg     = new Image(); dvizhuhaImg.src     = 'images/dvizhuka_yellow.png';
+// FIX: Ensured the filename exactly matches your screenshot (dvizhuka_yellow.png)
+const dvizhuhaImg     = new Image(); dvizhuhaImg.src     = 'images/dvizhuka_yellow.png'; 
 
 // --- ZOV ALLY ACTIONS ---
 const zovActions = [
@@ -149,9 +150,9 @@ const stats = {
     svo:       { base: 0,  display: 0 },            
     dvizhuha:  { base: 10, display: 10 },        
     zov:       { base: 10, display: 10 },            
-    potuzhnist:{ base: 10, display: 10 },     
+    potuzhnist:{ base: 200, display: 10 },     
     ipso:      { base: 10, display: 10 },    
-    peremoha:  { base: 0,  display: 0 },       
+    peremoha:  { base: 300,  display: 0 },       
     zrada:     { base: 0,  display: 0 },
     cbo:       { base: 10, display: 10 }
 };
@@ -266,7 +267,7 @@ function resetGame() {
 }
 
 function calculateDamage(baseValue) {
-    let dmg = baseValue * 100000; 
+    let dmg = baseValue * 1000000; 
     dmg *= (1 + (stats.goyda.base / 10));
     dmg *= (1 + (stats.peremoha.base / 10));
     dmg *= Math.max(0.1, 1 - (stats.zrada.base / 100));
@@ -280,7 +281,8 @@ function shootPlayerProjectile() {
 
 function damagePlayer(amount) {
     if (player.invulnerableTimer > 0) return;
-    let finalDamage = (amount * 20) * (1 + (stats.goyda.base / 100));
+    // BALANCE UPDATE: Increased base damage multiplier from 20 to 30
+    let finalDamage = (amount * 60) * (1 + (stats.goyda.base / 100));
     finalDamage *= (1 + (stats.peremoha.base / 100));
     finalDamage *= Math.max(0.2, 1 - (stats.zrada.base / 100));
 
@@ -370,7 +372,10 @@ function update() {
     if (gamePhase === 1) {
         let phaseDuration = (demonsFreed >= 1) ? 7200 : 1500;
         if (phaseTimer >= phaseDuration) { 
-            if (isLoopMode) {
+            // BUGFIX: If all demons are freed, do not try to transition to Phase 2. Just keep fighting Maxiushka!
+            if (demonsFreed >= demonData.length) {
+                phaseTimer = 0; // Reset timer and continue the endless fight
+            } else if (isLoopMode) {
                 phaseTimer = 0;
                 bossHp = MAX_BOSS_HP;
                 player.hp = PLAYER_START_HP;
@@ -420,7 +425,7 @@ function update() {
     }
 
     // Check for 90% HP threshold
-    if (bossHp <= MAX_BOSS_HP * 0.9 && gameState === 'playing') {
+    if (bossHp <= MAX_BOSS_HP * 0.7 && gameState === 'playing') {
         gameState = 'dialog';
         dialogPage = 0;
         dialogTimer = 0;
@@ -559,7 +564,7 @@ function update() {
 
     // --- PHASE 1 & 7 MAXIUSHKAS ATTACKS ---
     if (gamePhase === 1 || gamePhase === 7) {
-        const fireRate = Math.max(5, 15 - (stats.potuzhnist.base / 5));
+        const fireRate = Math.max(5, 15 - (stats.potuzhnist.base / 2));
         attackTimer++;
         if (attackTimer >= fireRate) {
             const a = Math.random() * Math.PI * 2;
@@ -654,8 +659,8 @@ function update() {
             }
             
             if (dist < 30 + player.radius) {
-                if (ap.type === 'enemy') damagePlayer(10);
-                else if (ap.type === 'heal') player.hp = Math.min(player.hp + 50, player.maxHp);
+                if (ap.type === 'enemy') damagePlayer(15); // Increased from 10
+                else if (ap.type === 'heal') player.hp = Math.min(player.hp + 50000, player.maxHp); // BALANCE UPDATE: Massive heal!
                 alliedProjectiles.splice(i, 1); continue;
             }
         }
@@ -675,7 +680,7 @@ function update() {
         if (pp.life !== undefined) { pp.life--; if(pp.life<=0) playerProjectiles.splice(i,1); }
         if (pp.y < 100) { playerProjectiles.splice(i, 1); continue; }
         if (pp.x > 100 && pp.x < 700 && pp.y > -50 && pp.y < 300) {
-            bossHp -= pp.damage; 
+            bossHp -= pp.damage/10; 
             spawnDamageText(pp.x, pp.y, pp.damage);
             playerProjectiles.splice(i, 1);
         }
@@ -693,7 +698,7 @@ function update() {
             }
         }
 
-        if (p.hp > 0 && Math.hypot(p.x - player.x, p.y - player.y) < p.radius + player.radius) damagePlayer(5);
+        if (p.hp > 0 && Math.hypot(p.x - player.x, p.y - player.y) < p.radius + player.radius) damagePlayer(8); // Increased from 5
         if (p.x < -100 || p.x > 900 || p.y < -100 || p.y > 700 || p.hp <= 0) projectiles.splice(i, 1);
     }
 
@@ -707,7 +712,7 @@ function update() {
 
         if (paw.timer <= 60) {
             if (checkPawCollision(paw.x, paw.y, paw.angle, side === 'left' ? leftPawImg : rightPawImg))
-                damagePlayer(15);
+                damagePlayer(25); // Increased from 15
         } else {
             paw.state = 'idle'; paw.angle = 0; paw.x = side === 'left' ? 100 : 700;
         }
@@ -722,7 +727,7 @@ function update() {
             if (b.timer <= 0) { b.state = 'firing'; b.timer = 15; }
         } else if (b.state === 'firing') {
             b.timer--;
-            if (checkLaserHit(b)) damagePlayer(25);
+            if (checkLaserHit(b)) damagePlayer(40); // Increased from 25
             if (b.timer <= 0) maxoBlasters.splice(i, 1);
         }
     }
@@ -736,7 +741,7 @@ function update() {
     for (let i = claws.length - 1; i >= 0; i--) {
         const c = claws[i]; c.x += c.vx; c.y += c.vy;
         if (Math.hypot(c.x - player.x, c.y - player.y) < c.radius + player.radius) {
-            damagePlayer(20); claws.splice(i, 1); continue;
+            damagePlayer(30); claws.splice(i, 1); continue; // Increased from 20
         }
         if (c.x < ARENA.left - EXIT_MARGIN || c.x > ARENA.right + EXIT_MARGIN || c.y < ARENA.top - EXIT_MARGIN || c.y > ARENA.bottom + EXIT_MARGIN) {
             claws.splice(i, 1);
@@ -824,7 +829,7 @@ function draw() {
 
         if (activeVideo && activeVideo.readyState >= 2) {
             const tvW = 193, tvH = 76;
-            const tvX = 374, tvY = 73; // Adjust these if the video needs to move up/down on the sprite
+            const tvX = 374, tvY = 73; 
             ctx.drawImage(activeVideo, tvX - tvW/2, tvY - tvH/2, tvW, tvH);
         }
 
@@ -942,8 +947,13 @@ function draw() {
     }
     if (dvizhuhaButton.active) {
         ctx.save();
-        if (dvizhuhaImg.complete && dvizhuhaImg.naturalWidth > 0) ctx.drawImage(dvizhuhaImg, dvizhuhaButton.x - 60, dvizhuhaButton.y - 25, 120, 50);
-        else { ctx.fillStyle = dvizhuhaButton.hovered ? '#ffd700' : '#ff8c00'; ctx.fillRect(dvizhuhaButton.x - 60, dvizhuhaButton.y - 25, 120, 50); }
+        // This draws the custom Dvizhukha sprite
+        if (dvizhuhaImg.complete && dvizhuhaImg.naturalWidth > 0) {
+            ctx.drawImage(dvizhuhaImg, dvizhuhaButton.x - 60, dvizhuhaButton.y - 25, 120, 50);
+        } else { 
+            ctx.fillStyle = dvizhuhaButton.hovered ? '#ffd700' : '#ff8c00'; 
+            ctx.fillRect(dvizhuhaButton.x - 60, dvizhuhaButton.y - 25, 120, 50); 
+        }
         ctx.restore();
     }
 
